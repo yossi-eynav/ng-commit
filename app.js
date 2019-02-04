@@ -1,8 +1,35 @@
 #!/usr/bin/env node
 
-const { exec } = require('child_process');
+const { exec, spawn } = require('child_process');
 const inquirer = require('inquirer')
 const colors = require('colors');
+
+const results = [];
+inquirer.registerPrompt('autocomplete', require('inquirer-autocomplete-prompt'));
+
+function getFilesList() {
+  return new Promise((resolve, reject) => {
+    let results = new Set();
+    var child = spawn(`find`, ['.', '-not' ,"-path" ,"'*/\.*'"]);
+
+    child.stdout.on('data', function (data) {
+      let chunk = String(data);
+      chunk = chunk.replace(/[\n.'"]/g,'')
+      const files = chunk.split('/')
+
+      files.forEach((file) => {
+        file = file.trim();
+        if(file) {
+          results.add(file);
+        }
+      })
+    });
+    
+    child.on('close', function (code) {
+      resolve(Array.from(results));
+    });
+  });
+}
 
 async function main() {
   try {
@@ -25,12 +52,14 @@ async function main() {
     return;
   }
 
+  const files = await getFilesList();
+  console.log(files);
 
   console.info("Format of the commit message: \n".grey+ '<type>(<scope>): <subject>'.green);
   console.log();
   
-  const prompt = inquirer.createPromptModule();
-  prompt([
+
+  inquirer.prompt([
     {
       type: 'list',
       name: 'type',
@@ -46,9 +75,16 @@ async function main() {
       ]
     },
     {
-      type: 'input',
+      type: 'autocomplete',
       name: 'scope',
-      message: 'What is the <scope>?'
+      message: 'Select a scope',
+      source: function(answersSoFar, input) {
+        const relevantFiles = files.filter(result => result.match(input));
+        relevantFiles.push(input + " ");
+        // options = options.concat(relevantFiles);
+        // console.log(relevantFiles)
+        return Promise.resolve(relevantFiles);
+      }
     },
     {
       type: 'input',
