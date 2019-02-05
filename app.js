@@ -14,12 +14,13 @@ function getFilesList() {
 
     child.stdout.on('data', function (data) {
       let chunk = String(data);
-      chunk = chunk.replace(/[\n.'"]/g,'')
+      chunk = chunk.replace(/[\n'"]/g,'')
       const files = chunk.split('/')
 
       files.forEach((file) => {
+        file = file.toLowerCase();
         file = file.trim();
-        if(file) {
+        if(!!file) {
           results.add(file);
         }
       })
@@ -53,7 +54,6 @@ async function main() {
   }
 
   const files = await getFilesList();
-  console.log(files);
 
   console.info("Format of the commit message: \n".grey+ '<type>(<scope>): <subject>'.green);
   console.log();
